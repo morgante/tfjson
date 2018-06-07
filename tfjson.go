@@ -47,6 +47,26 @@ func main() {
 
 type output map[string]interface{}
 
+func ConvertPlan(planfile string) (output, error) {
+	f, err := os.Open(planfile)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	plan, err := terraform.ReadPlan(f)
+	if err != nil {
+		return nil, err
+	}
+
+	diff := output{}
+	for _, v := range plan.Diff.Modules {
+		convertModuleDiff(diff, v)
+	}
+
+	return diff, nil
+}
+
 func tfjson(planfile string) (string, error) {
 	f, err := os.Open(planfile)
 	if err != nil {
