@@ -4,6 +4,10 @@ tfjson
 Utility to read in a Terraform plan file and dump it out in JSON. Standalone
 version of [Terraform PR #3170](https://github.com/hashicorp/terraform/pull/3170).
 
+## Supported Terraform Version
+
+Tested up to Terraform v0.11.7
+
 ## Installation
 
 ```
