@@ -6,7 +6,7 @@ containerInfo:
 stages:
   build:
     parallel: 2
-    workDir: /go/src/github.com/palantir/tfjson
+    workDir: /go/src/github.com/palantir/converter
     environment:
       - PROJECT: pkg
       - GET_GO_VERSION: |
