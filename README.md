@@ -11,7 +11,7 @@ Tested up to Terraform v0.11.7
 ## Installation
 
 ```
-$ go get github.com/palantir/tfjson
+$ go get github.com/morgante/tfjson
 ```
 
 ## Usage
