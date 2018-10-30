@@ -31,87 +31,135 @@ import (
 )
 
 const mainTF = `
-provider "aws" {
-  region = "us-east-1"
-}
-
-resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
-}
-
-module "inner" {
-  source = "./inner"
-}
+provider "google" {
+	region = "us-central1"
+  }
+  
+  resource "google_compute_network" "test" {
+	name = "test"
+  }
+  
+  module "inner" {
+	source = "./inner"
+  }	
 `
 
 const innerTF = `
-resource "aws_vpc" "inner" {
-  cidr_block = "10.0.0.0/8"
-}
+resource "google_compute_subnetwork" "subnet0" {
+	name          = "testsub"
+	ip_cidr_range = "10.0.0.0/24"
+	network       = "test"
+  }  
 `
 
 const expected = `{
-    "aws_vpc.main": {
-        "cidr_block": "10.0.0.0/16",
-        "default_network_acl_id": "",
-        "default_route_table_id": "",
-        "default_security_group_id": "",
+    "destroy": false,
+    "google_compute_network.test": {
+        "auto_create_subnetworks": "true",
         "destroy": false,
         "destroy_tainted": false,
-        "dhcp_options_id": "",
-        "enable_classiclink": "",
-        "enable_dns_hostnames": "",
-        "enable_dns_support": "",
+        "gateway_ipv4": "",
         "id": "",
-        "instance_tenancy": "",
-        "main_route_table_id": ""
+        "name": "test",
+        "project": "",
+        "routing_mode": "",
+        "self_link": ""
     },
-    "destroy": false,
     "inner": {
-        "aws_vpc.inner": {
-            "cidr_block": "10.0.0.0/8",
-            "default_network_acl_id": "",
-            "default_route_table_id": "",
-            "default_security_group_id": "",
+        "destroy": false,
+        "google_compute_subnetwork.subnet0": {
+            "creation_timestamp": "",
             "destroy": false,
             "destroy_tainted": false,
-            "dhcp_options_id": "",
-            "enable_classiclink": "",
-            "enable_dns_hostnames": "",
-            "enable_dns_support": "",
+            "fingerprint": "",
+            "gateway_address": "",
             "id": "",
-            "instance_tenancy": "",
-            "main_route_table_id": ""
-        },
-        "destroy": false
+            "ip_cidr_range": "10.0.0.0/24",
+            "name": "testsub",
+            "network": "test",
+            "project": "",
+            "secondary_ip_range.#": "",
+            "self_link": ""
+        }
     }
 }`
 
-func Test(t *testing.T) {
+const expectedFlat = `{
+    "google_compute_network.test": {
+        "auto_create_subnetworks": "true",
+        "destroy": false,
+        "destroy_tainted": false,
+        "gateway_ipv4": "",
+        "id": "",
+        "name": "test",
+        "project": "",
+        "routing_mode": "",
+        "self_link": ""
+    },
+    "inner.google_compute_subnetwork.subnet0": {
+        "creation_timestamp": "",
+        "destroy": false,
+        "destroy_tainted": false,
+        "fingerprint": "",
+        "gateway_address": "",
+        "id": "",
+        "ip_cidr_range": "10.0.0.0/24",
+        "name": "testsub",
+        "network": "test",
+        "project": "",
+        "secondary_ip_range.#": "",
+        "self_link": ""
+    }
+}`
+
+func generatePlan() (planPath string, dir string) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
-		t.Fatal(err)
+		println(err)
+		os.Exit(1)
 	}
-	defer os.RemoveAll(dir)
 
 	mainPath := filepath.Join(dir, "main.tf")
 	if err := ioutil.WriteFile(mainPath, []byte(mainTF), 0644); err != nil {
-		t.Fatal(err)
+		println(err)
+		os.Exit(1)
 	}
 	innerDir := filepath.Join(dir, "inner")
 	if err := os.Mkdir(innerDir, 0755); err != nil {
-		t.Fatal(err)
+		println(err)
+		os.Exit(1)
 	}
 	innerPath := filepath.Join(innerDir, "main.tf")
 	if err := ioutil.WriteFile(innerPath, []byte(innerTF), 0644); err != nil {
-		t.Fatal(err)
+		println(err)
+		os.Exit(1)
 	}
 
-	planPath := filepath.Join(dir, "terraform.tfplan")
-	mustRun(t, "terraform", "get", dir)
-	mustRun(t, "terraform", "plan", "-out="+planPath, dir)
+	planPath = filepath.Join(dir, "terraform.tfplan")
+	mustRun("terraform", "get", dir)
+	mustRun("terraform", "plan", "-out="+planPath, dir)
 
-	j, err := tfjson(planPath)
+	return planPath, dir
+}
+
+func mustRun(name string, arg ...string) {
+	if _, err := exec.Command(name, arg...).Output(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			println(exitError)
+			os.Exit(1)
+		} else {
+			println(err)
+			os.Exit(1)
+		}
+	}
+}
+
+func TestHeirarchical(t *testing.T) {
+	planPath, dir := generatePlan()
+
+	defer os.RemoveAll(dir)
+
+	j, err := tfjson(planPath, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,12 +169,17 @@ func Test(t *testing.T) {
 	}
 }
 
-func mustRun(t *testing.T, name string, arg ...string) {
-	if _, err := exec.Command(name, arg...).Output(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			t.Fatal(string(exitError.Stderr))
-		} else {
-			t.Fatal(err)
-		}
+func TestFlat(t *testing.T) {
+	planPath, dir := generatePlan()
+
+	defer os.RemoveAll(dir)
+
+	j, err := tfjson(planPath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if j != expectedFlat {
+		t.Errorf("Expected: %s\nActual: %s", expectedFlat, j)
 	}
 }
