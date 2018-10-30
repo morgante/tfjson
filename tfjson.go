@@ -24,18 +24,31 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
-	"github.com/alshabib/tfjson/converter"
+
+	"github.com/morgante/tfjson/converter"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: tfjson terraform.tfplan")
+	var flatten bool
+
+	flag.BoolVar(&flatten, "flatten", false, "Specify whether to flatten the JSON output by prepending module names to instance names instead of making the instances child values.")
+
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "usage: tfjson [OPTIONS] planfile.tfplan")
+		flag.CommandLine.PrintDefaults()
+	}
+
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		flag.Usage()
 		os.Exit(1)
 	}
 
-	j, err := tfjson(os.Args[1])
+	j, err := tfjson(flag.Args()[0], flatten)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -44,9 +57,8 @@ func main() {
 	fmt.Println(j)
 }
 
-
-func tfjson(planfile string) (string, error) {
-	diff, err := converter.ConvertPlan(planfile)
+func tfjson(planfile string, flatten bool) (string, error) {
+	diff, err := converter.ConvertPlan(planfile, flatten)
 
 	if err != nil {
 		return "", err
@@ -59,5 +71,3 @@ func tfjson(planfile string) (string, error) {
 
 	return string(j), nil
 }
-
-
