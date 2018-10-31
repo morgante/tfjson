@@ -23,6 +23,7 @@ SOFTWARE.
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -112,53 +113,53 @@ const expectedFlat = `{
     }
 }`
 
-func generatePlan() (planPath string, dir string) {
+var planPath string
+
+func TestMain(m *testing.M) {
+
+	run := func(name string, arg ...string) {
+		if _, err := exec.Command(name, arg...).Output(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				fmt.Println(exitError)
+				os.Exit(1)
+			} else {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+	}
+
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
-		println(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
+	defer os.RemoveAll(dir)
 
 	mainPath := filepath.Join(dir, "main.tf")
 	if err := ioutil.WriteFile(mainPath, []byte(mainTF), 0644); err != nil {
-		println(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 	innerDir := filepath.Join(dir, "inner")
 	if err := os.Mkdir(innerDir, 0755); err != nil {
-		println(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 	innerPath := filepath.Join(innerDir, "main.tf")
 	if err := ioutil.WriteFile(innerPath, []byte(innerTF), 0644); err != nil {
-		println(err)
+		fmt.Println(err)
 		os.Exit(1)
 	}
 
 	planPath = filepath.Join(dir, "terraform.tfplan")
-	mustRun("terraform", "get", dir)
-	mustRun("terraform", "plan", "-out="+planPath, dir)
+	run("terraform", "get", dir)
+	run("terraform", "init")
+	run("terraform", "plan", "-out="+planPath, dir)
 
-	return planPath, dir
+	os.Exit(m.Run())
 }
-
-func mustRun(name string, arg ...string) {
-	if _, err := exec.Command(name, arg...).Output(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			println(exitError)
-			os.Exit(1)
-		} else {
-			println(err)
-			os.Exit(1)
-		}
-	}
-}
-
 func TestHeirarchical(t *testing.T) {
-	planPath, dir := generatePlan()
-
-	defer os.RemoveAll(dir)
-
 	j, err := tfjson(planPath, false)
 	if err != nil {
 		t.Fatal(err)
@@ -170,10 +171,6 @@ func TestHeirarchical(t *testing.T) {
 }
 
 func TestFlat(t *testing.T) {
-	planPath, dir := generatePlan()
-
-	defer os.RemoveAll(dir)
-
 	j, err := tfjson(planPath, true)
 	if err != nil {
 		t.Fatal(err)
