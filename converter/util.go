@@ -26,10 +26,11 @@ func insert(out output, path []string, key string, value interface{}) {
 }
 
 func convertModuleDiff(out output, diff *terraform.ModuleDiff, flat bool) {
+	var flatName strings.Builder
 	for k, v := range diff.Resources {
 		var instanceName []string
 		if flat {
-			var flatName strings.Builder
+			flatName.Reset()
 
 			if len(diff.Path) > 1 {
 				// slice [1:] to omit "Root" string
