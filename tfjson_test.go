@@ -86,6 +86,7 @@ const expected = `{
 }`
 
 const expectedFlat = `{
+    "destroy": false,
     "google_compute_network.test": {
         "auto_create_subnetworks": "true",
         "destroy": false,
@@ -154,7 +155,7 @@ func TestMain(m *testing.M) {
 
 	planPath = filepath.Join(dir, "terraform.tfplan")
 	run("terraform", "get", dir)
-	run("terraform", "init")
+	run("terraform", "init", dir)
 	run("terraform", "plan", "-out="+planPath, dir)
 
 	os.Exit(m.Run())
