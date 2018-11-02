@@ -23,6 +23,7 @@ SOFTWARE.
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -52,6 +53,8 @@ resource "aws_vpc" "inner" {
 
 const expected = `{
     "aws_vpc.main": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
         "cidr_block": "10.0.0.0/16",
         "default_network_acl_id": "",
         "default_route_table_id": "",
@@ -60,15 +63,20 @@ const expected = `{
         "destroy_tainted": false,
         "dhcp_options_id": "",
         "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
         "enable_dns_hostnames": "",
-        "enable_dns_support": "",
+        "enable_dns_support": "true",
         "id": "",
-        "instance_tenancy": "",
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
         "main_route_table_id": ""
     },
     "destroy": false,
     "inner": {
         "aws_vpc.inner": {
+            "arn": "",
+            "assign_generated_ipv6_cidr_block": "false",
             "cidr_block": "10.0.0.0/8",
             "default_network_acl_id": "",
             "default_route_table_id": "",
@@ -77,41 +85,111 @@ const expected = `{
             "destroy_tainted": false,
             "dhcp_options_id": "",
             "enable_classiclink": "",
+            "enable_classiclink_dns_support": "",
             "enable_dns_hostnames": "",
-            "enable_dns_support": "",
+            "enable_dns_support": "true",
             "id": "",
-            "instance_tenancy": "",
+            "instance_tenancy": "default",
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
             "main_route_table_id": ""
         },
         "destroy": false
     }
 }`
 
-func Test(t *testing.T) {
+const expectedFlat = `{
+    "aws_vpc.main": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
+        "cidr_block": "10.0.0.0/16",
+        "default_network_acl_id": "",
+        "default_route_table_id": "",
+        "default_security_group_id": "",
+        "destroy": false,
+        "destroy_tainted": false,
+        "dhcp_options_id": "",
+        "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
+        "enable_dns_hostnames": "",
+        "enable_dns_support": "true",
+        "id": "",
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
+        "main_route_table_id": ""
+    },
+    "destroy": false,
+    "inner.aws_vpc.inner": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
+        "cidr_block": "10.0.0.0/8",
+        "default_network_acl_id": "",
+        "default_route_table_id": "",
+        "default_security_group_id": "",
+        "destroy": false,
+        "destroy_tainted": false,
+        "dhcp_options_id": "",
+        "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
+        "enable_dns_hostnames": "",
+        "enable_dns_support": "true",
+        "id": "",
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
+        "main_route_table_id": ""
+    }
+}`
+
+var planPath string
+
+func TestMain(m *testing.M) {
+
+	run := func(name string, arg ...string) {
+		if _, err := exec.Command(name, arg...).Output(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				fmt.Println(exitError)
+				os.Exit(1)
+			} else {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+		}
+	}
+
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
-		t.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 	defer os.RemoveAll(dir)
 
 	mainPath := filepath.Join(dir, "main.tf")
 	if err := ioutil.WriteFile(mainPath, []byte(mainTF), 0644); err != nil {
-		t.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 	innerDir := filepath.Join(dir, "inner")
 	if err := os.Mkdir(innerDir, 0755); err != nil {
-		t.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 	innerPath := filepath.Join(innerDir, "main.tf")
 	if err := ioutil.WriteFile(innerPath, []byte(innerTF), 0644); err != nil {
-		t.Fatal(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	planPath := filepath.Join(dir, "terraform.tfplan")
-	mustRun(t, "terraform", "get", dir)
-	mustRun(t, "terraform", "plan", "-out="+planPath, dir)
+	planPath = filepath.Join(dir, "terraform.tfplan")
+	run("terraform", "get", dir)
+	run("terraform", "init", dir)
+	run("terraform", "plan", "-out="+planPath, dir)
 
-	j, err := tfjson(planPath)
+	os.Exit(m.Run())
+}
+func TestHeirarchical(t *testing.T) {
+	j, err := tfjson(planPath, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,12 +199,13 @@ func Test(t *testing.T) {
 	}
 }
 
-func mustRun(t *testing.T, name string, arg ...string) {
-	if _, err := exec.Command(name, arg...).Output(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			t.Fatal(string(exitError.Stderr))
-		} else {
-			t.Fatal(err)
-		}
+func TestFlat(t *testing.T) {
+	j, err := tfjson(planPath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if j != expectedFlat {
+		t.Errorf("Expected: %s\nActual: %s", expectedFlat, j)
 	}
 }

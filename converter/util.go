@@ -1,6 +1,10 @@
 package converter
 
-import "github.com/hashicorp/terraform/terraform"
+import (
+	"strings"
+
+	"github.com/hashicorp/terraform/terraform"
+)
 
 type output map[string]interface{}
 
@@ -21,10 +25,31 @@ func insert(out output, path []string, key string, value interface{}) {
 	out[key] = value
 }
 
-func convertModuleDiff(out output, diff *terraform.ModuleDiff) {
-	insert(out, diff.Path, "destroy", diff.Destroy)
+func convertModuleDiff(out output, diff *terraform.ModuleDiff, flat bool) {
+	var flatName strings.Builder
 	for k, v := range diff.Resources {
-		convertInstanceDiff(out, append(diff.Path, k), v)
+		var instanceName []string
+		if flat {
+			flatName.Reset()
+
+			if len(diff.Path) > 1 {
+				// slice [1:] to omit "Root" string
+				flatName.WriteString(strings.Join(diff.Path[1:], "."))
+				flatName.WriteString(".")
+			}
+
+			flatName.WriteString(k)
+
+			if len(diff.Path) == 1 {
+				// only transcribe destroy only for root module, all other modules are ignored in the flattened version
+				insert(out, diff.Path, "destroy", diff.Destroy)
+			}
+			instanceName = []string{flatName.String()}
+		} else {
+			insert(out, diff.Path, "destroy", diff.Destroy)
+			instanceName = append(diff.Path, k)
+		}
+		convertInstanceDiff(out, instanceName, v)
 	}
 }
 
