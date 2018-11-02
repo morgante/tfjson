@@ -6,7 +6,7 @@ version of [Terraform PR #3170](https://github.com/hashicorp/terraform/pull/3170
 
 ## Supported Terraform Version
 
-Tested up to Terraform v0.11.7
+Tested up to Terraform v0.11.10
 
 ## Installation
 
