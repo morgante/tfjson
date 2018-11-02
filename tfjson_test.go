@@ -32,85 +32,113 @@ import (
 )
 
 const mainTF = `
-provider "google" {
-	region = "us-central1"
-  }
-  
-  resource "google_compute_network" "test" {
-	name = "test"
-  }
-  
-  module "inner" {
-	source = "./inner"
-  }	
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+}
+
+module "inner" {
+  source = "./inner"
+}
 `
 
 const innerTF = `
-resource "google_compute_subnetwork" "subnet0" {
-	name          = "testsub"
-	ip_cidr_range = "10.0.0.0/24"
-	network       = "test"
-  }  
+resource "aws_vpc" "inner" {
+  cidr_block = "10.0.0.0/8"
+}
 `
 
 const expected = `{
-    "destroy": false,
-    "google_compute_network.test": {
-        "auto_create_subnetworks": "true",
+    "aws_vpc.main": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
+        "cidr_block": "10.0.0.0/16",
+        "default_network_acl_id": "",
+        "default_route_table_id": "",
+        "default_security_group_id": "",
         "destroy": false,
         "destroy_tainted": false,
-        "gateway_ipv4": "",
+        "dhcp_options_id": "",
+        "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
+        "enable_dns_hostnames": "",
+        "enable_dns_support": "true",
         "id": "",
-        "name": "test",
-        "project": "",
-        "routing_mode": "",
-        "self_link": ""
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
+        "main_route_table_id": ""
     },
+    "destroy": false,
     "inner": {
-        "destroy": false,
-        "google_compute_subnetwork.subnet0": {
-            "creation_timestamp": "",
+        "aws_vpc.inner": {
+            "arn": "",
+            "assign_generated_ipv6_cidr_block": "false",
+            "cidr_block": "10.0.0.0/8",
+            "default_network_acl_id": "",
+            "default_route_table_id": "",
+            "default_security_group_id": "",
             "destroy": false,
             "destroy_tainted": false,
-            "fingerprint": "",
-            "gateway_address": "",
+            "dhcp_options_id": "",
+            "enable_classiclink": "",
+            "enable_classiclink_dns_support": "",
+            "enable_dns_hostnames": "",
+            "enable_dns_support": "true",
             "id": "",
-            "ip_cidr_range": "10.0.0.0/24",
-            "name": "testsub",
-            "network": "test",
-            "project": "",
-            "secondary_ip_range.#": "",
-            "self_link": ""
-        }
+            "instance_tenancy": "default",
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "main_route_table_id": ""
+        },
+        "destroy": false
     }
 }`
 
 const expectedFlat = `{
-    "destroy": false,
-    "google_compute_network.test": {
-        "auto_create_subnetworks": "true",
+    "aws_vpc.main": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
+        "cidr_block": "10.0.0.0/16",
+        "default_network_acl_id": "",
+        "default_route_table_id": "",
+        "default_security_group_id": "",
         "destroy": false,
         "destroy_tainted": false,
-        "gateway_ipv4": "",
+        "dhcp_options_id": "",
+        "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
+        "enable_dns_hostnames": "",
+        "enable_dns_support": "true",
         "id": "",
-        "name": "test",
-        "project": "",
-        "routing_mode": "",
-        "self_link": ""
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
+        "main_route_table_id": ""
     },
-    "inner.google_compute_subnetwork.subnet0": {
-        "creation_timestamp": "",
+    "destroy": false,
+    "inner.aws_vpc.inner": {
+        "arn": "",
+        "assign_generated_ipv6_cidr_block": "false",
+        "cidr_block": "10.0.0.0/8",
+        "default_network_acl_id": "",
+        "default_route_table_id": "",
+        "default_security_group_id": "",
         "destroy": false,
         "destroy_tainted": false,
-        "fingerprint": "",
-        "gateway_address": "",
+        "dhcp_options_id": "",
+        "enable_classiclink": "",
+        "enable_classiclink_dns_support": "",
+        "enable_dns_hostnames": "",
+        "enable_dns_support": "true",
         "id": "",
-        "ip_cidr_range": "10.0.0.0/24",
-        "name": "testsub",
-        "network": "test",
-        "project": "",
-        "secondary_ip_range.#": "",
-        "self_link": ""
+        "instance_tenancy": "default",
+        "ipv6_association_id": "",
+        "ipv6_cidr_block": "",
+        "main_route_table_id": ""
     }
 }`
 
