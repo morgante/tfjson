@@ -39,6 +39,11 @@ func convertModuleDiff(out output, diff *terraform.ModuleDiff, flat bool) {
 			}
 
 			flatName.WriteString(k)
+
+			if len(diff.Path) == 1 {
+				// only transcribe destroy only for root module, all other modules are ignored in the flattened version
+				insert(out, diff.Path, "destroy", diff.Destroy)
+			}
 			instanceName = []string{flatName.String()}
 		} else {
 			insert(out, diff.Path, "destroy", diff.Destroy)
